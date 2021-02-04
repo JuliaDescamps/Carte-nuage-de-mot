@@ -274,7 +274,7 @@ def plot_word_cloud_general(data, colmot, colfreq, image) :
     wc.generate_from_frequencies(text)
     plt.imshow(wc.recolor(color_func=image_colors), interpolation='bilinear')
     plt.axis('off')
-    plt.savefig(os.path.join(DIR_IMG, f'wc_pref_{image}.png'))
+    plt.savefig(os.path.join(DIR_IMG, f'wc_general_{image}.png'))
     plt.show()
     return 
 
