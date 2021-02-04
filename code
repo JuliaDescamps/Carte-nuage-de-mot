@@ -1,0 +1,291 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# import panda (and other useful packages)
+import os
+import pandas as pd
+import numpy as np
+import random 
+import matplotlib.pyplot as plt
+import math
+
+DIR_CSV = os.path.join("/Users/julia/Documents/DESCAMPS 2022/cog_ensemble_2020_csv/DIR_CSV")
+DIR_IMG = os.path.join("/Users/julia/Documents/DESCAMPS 2022/cog_ensemble_2020_csv/DIR_IMG/regions")
+
+
+
+
+# # IMPORT DES DONNÉES
+
+
+data_final= pd.read_csv(os.path.join(DIR_CSV, 'data_final.csv'), sep = ";")
+# data_final
+
+
+
+# # DÉFINITION DES FONCTIONS DE BASE
+
+## Ici, la base de données est sous la forme suivante :
+# NOM_COM          REGION
+# Nom1              Reg1
+# Nom2              Reg1
+# Nom3              Reg2
+# ...               ...
+
+# Il faut donc extraire les suffixes et préfixes pertinents de chaque ville par région, et les compter, pour créer le nuage de mots
+# Si on dispose déjà d'une base de données sous la forme :
+# MOTS         FREQUENCE      
+# mot1            x            
+# mot2            Y            
+# mot3            z            
+# ...            ..            
+
+# =========> aller à la fonction plot_word_cloud_general
+
+
+
+##### Fonction qui extrait une colonne du dataframe sous forme de liste
+def convliste(dataframe, colonne):   
+    # Je convertis la colonne des noms de communes en matrice
+    matrice = np.array(dataframe[colonne])
+    # puis je convertis la matrice en liste
+    liste_r = list(matrice)
+    ## Je supprime les villes qui sont plusieurs fois
+    #liste_r = [] 
+    #for i in liste : 
+    #    if i not in liste_r: 
+    #        liste_r.append(i) 
+    return(liste_r)
+
+def convdic(dataframe, col1, col2):
+    dic = dataframe.set_index(col1)[col2].to_dict()
+    return dic
+
+
+##### Fonction d'extraction des préfixes 
+def prefixe(liste):
+    prelist=[]  # On crée une liste vide dans laquelle on met les préfixes générés
+    NREPL = 8 # On définit un nombre de caractère max pour le préfixe
+    for l in liste:
+        for i in range(3,NREPL):
+            p = l[0:i]
+            prelist.append(p)
+    return(prelist)
+
+
+##### Fonction d'extraction des suffixes
+def suffixe(liste):
+    suflist=[]  # On crée une liste vide dans laquelle on met les suffixes générés
+    NREPL = 8 # On définit un nombre de caractère max pour le préfixe
+    for l in liste:
+        for i in range(3,NREPL):
+            p = l[-i:]
+            suflist.append(p)
+    return(suflist)
+
+
+##### Fonctions de purification
+### 1 ###
+## Je retire de la liste de suffixes les suffixes qui
+    # - sont un sous-suffixes d'un suffixe
+    # - ne sont pas eux-mêmes
+    # - ont une fréquence d'occurrence négligeable par rapport à leur sur-suffixe
+def purif(liste):
+    list_r = []
+    remove = 0
+    for x in liste:
+        for x2 in liste:
+            if x2.startswith(x) and len(x) != len(x2) and liste.count(x) <  1.5*liste.count(x2):
+                remove = 1
+        if remove == 0:
+            list_r.append(x)
+        remove = 0
+    return(list_r)
+
+### 2 ###
+## Je cherche à privilégier les préfixes qui sont gros mais qui apparaissent un peu moins souvent par rapport à des préfixes qui sont petits mais très fréquents
+## (taille*effectif) => privilégie les préfixes longs qui apparaissent peu 
+## On compare ça à l'effectif moyen pour s'avoir si on le garde ou pas. Si <, on le vire
+
+def sdc(x):
+    res = []
+    # remove = 0
+    for c in x:
+        if len(c[0])*c[1] > 15*eff_moy(x):
+            res.append(c)
+    return(res)
+
+
+
+##### Fonctions de calcul
+## Je compte les occurrences de chaque élément d'une liste
+def compt(liste):
+    couples = Counter(liste).most_common()
+    return(couples)
+
+## Je compte les occurrences de chaque élément d'un string
+def comptstr(string):
+    stringliste = string.split(" ")
+    couples = compt(stringliste)
+    return(couples)
+
+
+
+
+## Fonction qui extrait les suffixes selon les critères de purification définis en amont et qui les classe selon leur fréquence
+## Le résultat sort sous la forme d'un dictionnaire où les clés sont les suffixes et les valeurs associées la fréquence
+def freqsuf(x):
+    def supra_fonction(x):
+        ## Je crée la base de région
+        data_region = extract(x)
+        # Je convertis la colonne des noms de communes en matrice
+        liste_r = convliste(data_region, "NOM_COM")
+        return(liste_r)
+    
+    liste_r = supra_fonction(x)
+    ## Je mets à part les villes avec les tirets
+    data_tiret = tri_tiret(liste_r)[0]
+    data_entier = tri_tiret(liste_r)[1]
+
+
+    ############ Villes sans tirets : création des préfixes ############
+    suflist = suffixe(data_entier)
+    suflist_r = purif(suflist)
+    suf_couples = compt(suflist_r)
+    suflist_r2 = map(lambda x : x, sdc(suf_couples))
+    suflist_r2 = list(suflist_r2)
+    dicres = dict(suflist_r2)
+    return(dicres)
+
+## Fonction qui extrait les préfixes selon les critères de purification définis en amont et qui les classe selon leur fréquence
+## Le résultat sort sous la forme d'un dictionnaire où les clés sont les préfixes et les valeurs associées la fréquence
+def freqpref(x):
+    def supra_fonction(x):
+        ## Je crée la base de région
+        data_region = extract(x)
+        # Je convertis la colonne des noms de communes en matrice
+        liste_r = convliste(data_region, "NOM_COM")
+        return(liste_r)   
+    
+    liste_r = supra_fonction(x)
+    ## Je mets à part les villes avec les tirets
+    data_tiret = tri_tiret(liste_r)[0]
+    data_entier = tri_tiret(liste_r)[1]
+
+
+    ############ Villes sans tirets : création des préfixes ############
+    prelist = prefixe(data_entier)
+    prelist_r = purif(prelist)
+    pre_couples = compt(prelist_r)
+    prelist_r2 = map(lambda x : x, sdc(pre_couples))
+    prelist_r2 = list(prelist_r2)
+    dicres = dict(prelist_r2)
+    return(dicres)
+
+
+
+
+# # NUAGES DE MOTS
+
+
+## Installation et import des packages
+# pip install wordcloud
+import re
+from collections import Counter
+from PIL import Image
+from wordcloud import WordCloud, ImageColorGenerator
+import matplotlib.pyplot as plt
+
+
+
+## Fonction qui projette le nuage de mot sur une image selon la fréquence de chaque mot
+
+## Ici, chaque dictionnaire et chaque image sont identifiés par le nom de la région.
+
+def plot_word_cloud_suf(region) :
+    
+    # Creation du dictionnaire
+    # Ici, le dictionnaire est celui des suffixes associée à la fréquence d'apparition
+    # Marche avec n'importe quel dictionnaire de mots/noms associés à une fréquence
+    text = freqsuf(f'{region}')
+
+    
+    # Définir un masque
+    # Attention, l'image doit être en format vectoriel sur fond blanc
+    # Une banque d'image pour les régions est fournie dans le dossier  
+
+
+    my_mask = np.array(Image.open(os.path.join(DIR_IMG, f'{region}.png')))
+    
+    # Couleurs
+    # Il s'agit de la couleur de l'image
+    
+    image_colors = ImageColorGenerator(my_mask) 
+    
+    # Définir le calque du nuage des mots
+    # La couleur de l'arrière-plan est fixé sur "blanc"
+    # La taille maximale des mots est fixée sur 200
+    # On peut reconfigurer la taille de l'image sortante
+    wc = WordCloud(width=1000, height=1000, background_color="white", mask=my_mask, max_font_size=200)
+    plt.figure(figsize= (20,14))
+    wc.generate_from_frequencies(text)
+    plt.imshow(wc.recolor(color_func=image_colors), interpolation='bilinear')
+    plt.axis('off')
+    
+    ## L'image est sauvée sur l'ordinateur en format .png
+    plt.savefig(os.path.join(DIR_IMG, f'wc_suf_{region}.png'))
+    plt.show()
+    return 
+
+
+## Même fonction pour les préfixes
+def plot_word_cloud_pref(region) :
+    # Creation du dictionnaire
+    sufliste = freqpref(f'{region}')
+    text = dict(sufliste)
+    # Définir un masque
+    my_mask = np.array(Image.open(os.path.join(DIR_IMG, f'{region}.png')))
+    # Couleurs
+    image_colors = ImageColorGenerator(my_mask) 
+    # Définir le calque du nuage des mots
+    wc = WordCloud(width=1000, height=1000, background_color="white", mask=my_mask, max_font_size=250)
+    plt.figure(figsize= (20,14))
+    wc.generate_from_frequencies(text)
+    plt.imshow(wc.recolor(color_func=image_colors), interpolation='bilinear')
+    plt.axis('off')
+    plt.savefig(os.path.join(DIR_IMG, f'wc_pref_{region}.png'))
+    plt.show()
+    return 
+
+
+def plot_word_cloud_general(data, colmot, colfreq, image) :
+    # Creation du dictionnaire
+    text = convdic(data, colmot, colfreq)
+    
+    # Définir un masque
+    my_mask = np.array(Image.open(os.path.join(DIR_IMG, f'{image}.png')))
+    
+    # Couleurs
+    image_colors = ImageColorGenerator(my_mask) 
+    
+    # Définir le calque du nuage des mots
+    wc = WordCloud(width=1000, height=1000, background_color="white", mask=my_mask, max_font_size=250)
+    plt.figure(figsize= (20,14))
+    wc.generate_from_frequencies(text)
+    plt.imshow(wc.recolor(color_func=image_colors), interpolation='bilinear')
+    plt.axis('off')
+    plt.savefig(os.path.join(DIR_IMG, f'wc_pref_{image}.png'))
+    plt.show()
+    return 
+
+
+
+
+## Boucle qui forme toutes les nuages de mots 
+# listeregion = convliste(data_final, "Région")
+
+# for region in listeregion:
+#     plot_word_cloud_suf(region)
+
+# for region in listeregion:
+#     plot_word_cloud_pref(region)
