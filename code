@@ -43,6 +43,13 @@ data_final= pd.read_csv(os.path.join(DIR_CSV, 'data_final.csv'), sep = ";")
 # =========> aller à la fonction plot_word_cloud_general
 
 
+##### Fonction qui fait l'extraction de la base de région à partir de la base initiale
+def extract(x):
+    data0 = data_final[data_final["Région"] == x]
+    data1 = data0[data0["NOM_DEPT"] != "PARIS"]
+    data2 = data1[data1["NOM_COM"].apply(lambda x: not x.startswith("MARSEILLE-"))]
+    data3 = data2[data2["NOM_COM"].apply(lambda x: not x.startswith("LYON-"))]
+    return(data3)
 
 ##### Fonction qui extrait une colonne du dataframe sous forme de liste
 def convliste(dataframe, colonne):   
