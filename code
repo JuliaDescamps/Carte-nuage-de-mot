@@ -49,7 +49,7 @@ def convliste(dataframe, colonne):
     # Je convertis la colonne des noms de communes en matrice
     matrice = np.array(dataframe[colonne])
     # puis je convertis la matrice en liste
-    liste_r = list(matrice)
+    liste_r = list(set(matrice))
     ## Je supprime les villes qui sont plusieurs fois
     #liste_r = [] 
     #for i in liste : 
